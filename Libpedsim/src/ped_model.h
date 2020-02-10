@@ -82,6 +82,8 @@ namespace Ped{
 
 		std::vector<float> destR;
 
+		int* reached;
+
 		// The waypoints in this scenario
 		std::vector<Twaypoint*> destinations;
 

@@ -77,7 +77,7 @@ int main(int argc, char*argv[]) {
 		// Reading the scenario file and setting up the crowd simulation model
 		Ped::Model model;
 		ParseScenario parser(scenefile);
-		model.setup(parser.getAgents(), parser.getWaypoints(), Ped::VECTOR);
+		model.setup(parser.getAgents(), parser.getWaypoints(), Ped::SEQ);
 
 		// GUI related set ups
 		QApplication app(argc, argv);
@@ -112,7 +112,7 @@ int main(int argc, char*argv[]) {
 
 			// Change this variable when testing different versions of your code. 
 			// May need modification or extension in later assignments depending on your implementations
-			Ped::IMPLEMENTATION implementation_to_test = Ped::VECTOR;
+			Ped::IMPLEMENTATION implementation_to_test = Ped::PTHREAD;
 			{
 				Ped::Model model;
 				ParseScenario parser(scenefile);

@@ -16,6 +16,7 @@
 #include "cuda_testkernel.h"
 #include <omp.h>
 #include <thread>
+#include "cuda_kernel.h"
 
 // Memory leak check with msvc++
 #define _CRTDBG_MAP_ALLOC
@@ -63,6 +64,11 @@ void Ped::Model::setup(std::vector<Ped::Tagent*> agentsInScenario, std::vector<T
 			destY.push_back(0);
 			destR.push_back(0);
 		}
+	}
+
+	if (implementation == CUDA) {
+		reached = new int[agentsX.size()];
+		cudaSetup(agentsX.size(), &agentsX[0], &agentsY[0], &destX[0], &destY[0], &destR[0]);
 	}
 
 	// Set up destinations
@@ -247,6 +253,25 @@ void Ped::Model::tick() {
 				destX[i + 3] = (float)destination->getx();
 				destY[i + 3] = (float)destination->gety();
 				destR[i + 3] = (float)destination->getr();
+			}
+		}
+	} else if (implementation == CUDA) {
+		cudaComputePosition(&agentsX[0], &agentsY[0], &destX[0], &destY[0], &destR[0], agentsX.size(), reached);
+
+		for (int i = 0; i < agentsX.size(); i++) {
+			if (reached[i] == 1) {
+				// take pop the current destination and append it to the end
+				Ped::Twaypoint* destination = waypoints[i].front();
+				waypoints[i].push_back(destination);
+				waypoints[i].pop_front();
+
+				// update the new destination
+				destination = waypoints[i].front();
+				destX[i] = (float)destination->getx();
+				destY[i] = (float)destination->gety();
+				destR[i] = (float)destination->getr();
+
+				reached[i] = 0;
 			}
 		}
 	}

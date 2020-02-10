@@ -12,6 +12,9 @@
     <CudaCompile Include="src\cuda_testkernel.cu">
       <Filter>Source Files</Filter>
     </CudaCompile>
+    <CudaCompile Include="src\cuda_kernel.cu">
+      <Filter>Source Files</Filter>
+    </CudaCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\heatmap_seq.cpp">
@@ -44,6 +47,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\ped_vector.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\cuda_kernel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
