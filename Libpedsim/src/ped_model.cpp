@@ -36,12 +36,22 @@ void Ped::Model::setup(std::vector<Ped::Tagent*> agentsInScenario, std::vector<T
 	// Set 
 	agents = std::vector<Ped::Tagent*>(agentsInScenario.begin(), agentsInScenario.end());
 
+	int* numWaypoint = new int[agents.size()];
+	int numWaypointMax = 0;
+
 	// pull out all agents coordinate, current destination coordinate and the Twaypoints vector into 5 vectors
 	for (int i = 0; i < agents.size(); ++i) {
 		agentsX.push_back((float) agents[i]->getX());
 		agentsY.push_back((float) agents[i]->getY());
 
 		waypoints.push_back(agents[i]->getWaypoints());
+
+		if (implementation == CUDA) {
+			numWaypoint[i] = agents[i]->getWaypoints().size();
+			if (numWaypoint[i] > numWaypointMax) {
+				numWaypointMax = numWaypoint[i];
+			}
+		}
 
 		if (agents[i]->getWaypoints().size() == 0) {
 			destX.push_back(-1);
@@ -67,10 +77,29 @@ void Ped::Model::setup(std::vector<Ped::Tagent*> agentsInScenario, std::vector<T
 	}
 
 	if (implementation == CUDA) {
-		reached = new int[agentsX.size()];
-		cudaSetup(agentsX.size(), &agentsX[0], &agentsY[0], &destX[0], &destY[0], &destR[0]);
+		// convert list of list of Twaypoint to 3D array to use in GPU
+		float*** cudaWaypoint = new float**[agents.size()];
+		for (int i = 0; i < agents.size(); i++) {
+			cudaWaypoint[i] = new float*[numWaypointMax];
+			for (int j = 0; j < numWaypoint[i]; j++) {
+				cudaWaypoint[i][j] = new float[3];
+				cudaWaypoint[i][j][0] = waypoints[i][j]->getx();
+				cudaWaypoint[i][j][1] = waypoints[i][j]->gety();
+				cudaWaypoint[i][j][2] = waypoints[i][j]->getr();
+			}
+		}
+		cudaSetup(agentsX.size(), &agentsX[0], &agentsY[0], cudaWaypoint, numWaypoint, numWaypointMax);
+
+		for (int i = 0; i < agents.size(); i++) {
+			for (int j = 0; i < numWaypoint[i]; j++) {
+				delete[] cudaWaypoint[i][j];
+			}
+			delete[] cudaWaypoint[i];
+		}
+		delete[] cudaWaypoint;
 	}
 
+	delete[] numWaypoint;
 	// Set up destinations
 	destinations = std::vector<Ped::Twaypoint*>(destinationsInScenario.begin(), destinationsInScenario.end());
 
@@ -256,24 +285,7 @@ void Ped::Model::tick() {
 			}
 		}
 	} else if (implementation == CUDA) {
-		cudaComputePosition(&agentsX[0], &agentsY[0], &destX[0], &destY[0], &destR[0], agentsX.size(), reached);
-
-		for (int i = 0; i < agentsX.size(); i++) {
-			if (reached[i] == 1) {
-				// take pop the current destination and append it to the end
-				Ped::Twaypoint* destination = waypoints[i].front();
-				waypoints[i].push_back(destination);
-				waypoints[i].pop_front();
-
-				// update the new destination
-				destination = waypoints[i].front();
-				destX[i] = (float)destination->getx();
-				destY[i] = (float)destination->gety();
-				destR[i] = (float)destination->getr();
-
-				reached[i] = 0;
-			}
-		}
+		cudaComputePosition(&agentsX[0], &agentsY[0], agentsX.size());
 	}
 }
 
