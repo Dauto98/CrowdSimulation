@@ -84,7 +84,7 @@ int main(int argc, char*argv[]) {
 		MainWindow mainwindow(model);
 
 		// Default number of steps to simulate. Feel free to change this.
-		const int maxNumberOfStepsToSimulate = 100000;
+		const int maxNumberOfStepsToSimulate = 10000;
 		
 				
 
@@ -99,7 +99,7 @@ int main(int argc, char*argv[]) {
 			{
 				Ped::Model model;
 				ParseScenario parser(scenefile);
-				model.setup(parser.getAgents(), parser.getWaypoints(), Ped::SEQ);
+				model.setup(parser.getAgents(), parser.getWaypoints(), Ped::OMP);
 				PedSimulation simulation(model, mainwindow);
 				// Simulation mode to use when profiling (without any GUI)
 				std::cout << "Running reference version...\n";
@@ -112,7 +112,7 @@ int main(int argc, char*argv[]) {
 
 			// Change this variable when testing different versions of your code. 
 			// May need modification or extension in later assignments depending on your implementations
-			Ped::IMPLEMENTATION implementation_to_test = Ped::PTHREAD;
+			Ped::IMPLEMENTATION implementation_to_test = Ped::VECTOR;
 			{
 				Ped::Model model;
 				ParseScenario parser(scenefile);

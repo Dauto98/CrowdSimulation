@@ -118,7 +118,8 @@ void Ped::Model::computeNextPosition(int start, int end) {
 void Ped::Model::tick() {
 	if (implementation == SEQ) {
 		// sequential mode
-		computeNextPosition(0, agentsX.size());
+		//computeNextPosition(0, agentsX.size());
+		move();
 	} else if (implementation == PTHREAD) {
 		int chunkSize = agentsX.size() / NUM_THREAD;
 		int numBiggerList = agentsX.size() % NUM_THREAD;
@@ -284,52 +285,81 @@ void Ped::Model::tick() {
 
 // Moves the agent to the next desired position. If already taken, it will
 // be moved to a location close to it.
-void Ped::Model::move(Ped::Tagent *agent)
-{
-	// Search for neighboring agents
-	set<const Ped::Tagent *> neighbors = getNeighbors(agent->getX(), agent->getY(), 2);
+void Ped::Model::move() {
+	for (int i = 0; i < agentsX.size(); i++) {
+		// if there is no destination to go to
+		if (destX[i] == -1 || destY[i] == -1) {
+			continue;
+		}
 
-	// Retrieve their positions
-	std::vector<std::pair<int, int> > takenPositions;
-	for (std::set<const Ped::Tagent*>::iterator neighborIt = neighbors.begin(); neighborIt != neighbors.end(); ++neighborIt) {
-		std::pair<int, int> position((*neighborIt)->getX(), (*neighborIt)->getY());
-		takenPositions.push_back(position);
-	}
+		// compute and update next position
+		double diffX = destX[i] - agentsX[i];
+		double diffY = destY[i] - agentsY[i];
+		double length = sqrt(diffX * diffX + diffY * diffY);
 
-	// Compute the three alternative positions that would bring the agent
-	// closer to his desiredPosition, starting with the desiredPosition itself
-	std::vector<std::pair<int, int> > prioritizedAlternatives;
-	std::pair<int, int> pDesired(agent->getDesiredX(), agent->getDesiredY());
-	prioritizedAlternatives.push_back(pDesired);
+		std::vector<std::pair<float, float> > prioritizedAlternatives;
+		std::pair<float, float> pDesired((float)round(agentsX[i] + diffX / length), (float)round(agentsY[i] + diffY / length));
+		prioritizedAlternatives.push_back(pDesired);
 
-	int diffX = pDesired.first - agent->getX();
-	int diffY = pDesired.second - agent->getY();
-	std::pair<int, int> p1, p2;
-	if (diffX == 0 || diffY == 0)
-	{
-		// Agent wants to walk straight to North, South, West or East
-		p1 = std::make_pair(pDesired.first + diffY, pDesired.second + diffX);
-		p2 = std::make_pair(pDesired.first - diffY, pDesired.second - diffX);
-	}
-	else {
-		// Agent wants to walk diagonally
-		p1 = std::make_pair(pDesired.first, agent->getY());
-		p2 = std::make_pair(agent->getX(), pDesired.second);
-	}
-	prioritizedAlternatives.push_back(p1);
-	prioritizedAlternatives.push_back(p2);
+		std::pair<float, float> p1, p2;
+		if (pDesired.first == agentsX[i] || pDesired.second == agentsY[i]) {
+			// Agent wants to walk straight to North, South, West or East
+			p1 = std::make_pair((float)round(pDesired.first + diffY / length), (float)round(pDesired.second + diffX / length));
+			p2 = std::make_pair((float)round(pDesired.first - diffY / length), (float)round(pDesired.second - diffX / length));
 
-	// Find the first empty alternative position
-	for (std::vector<pair<int, int> >::iterator it = prioritizedAlternatives.begin(); it != prioritizedAlternatives.end(); ++it) {
+			prioritizedAlternatives.push_back(p1);
+			prioritizedAlternatives.push_back(p2);
+			prioritizedAlternatives.push_back(std::make_pair((float)round(agentsX[i] + diffY / length), (float)round(agentsY[i] + diffX / length)));
+			prioritizedAlternatives.push_back(std::make_pair((float)round(agentsX[i] - diffY / length), (float)round(agentsY[i] - diffX / length)));
+			prioritizedAlternatives.push_back(std::make_pair((float)round(agentsX[i] + (diffY - diffX) / length), (float)round(agentsY[i] + (diffX - diffY) / length)));
+			prioritizedAlternatives.push_back(std::make_pair((float)round(agentsX[i] - (diffY - diffX) / length), (float)round(agentsY[i] - (diffX - diffY) / length)));
+			prioritizedAlternatives.push_back(std::make_pair((float)round(agentsX[i] - diffX / length), (float)round(agentsY[i] - diffY / length)));
+		} else {
+			// Agent wants to walk diagonally
+			p1 = std::make_pair(pDesired.first, agentsY[i]);
+			p2 = std::make_pair(agentsX[i], pDesired.second);
 
-		// If the current position is not yet taken by any neighbor
-		if (std::find(takenPositions.begin(), takenPositions.end(), *it) == takenPositions.end()) {
+			prioritizedAlternatives.push_back(p1);
+			prioritizedAlternatives.push_back(p2);
+			prioritizedAlternatives.push_back(std::make_pair(pDesired.first, (float)round(agentsY[i] - diffY / length)));
+			prioritizedAlternatives.push_back(std::make_pair((float)round(agentsX[i] - diffX / length), pDesired.second));
+			prioritizedAlternatives.push_back(std::make_pair((float)round(agentsX[i] - diffX / length), agentsY[i]));
+			prioritizedAlternatives.push_back(std::make_pair(agentsX[i], (float)round(agentsY[i] - diffY / length)));
+			prioritizedAlternatives.push_back(std::make_pair((float)round(agentsX[i] - diffX / length), (float)round(agentsY[i] - diffY / length)));
+		}
 
-			// Set the agent's position 
-			agent->setX((*it).first);
-			agent->setY((*it).second);
+		// Find the first empty alternative position
+		for (std::vector<pair<float, float> >::iterator it = prioritizedAlternatives.begin(); it != prioritizedAlternatives.end(); ++it) {
+			int empty = 1;
+			for (int j = 0; j < agentsX.size(); j++) {
+				if (i != j && it->first == agentsX[j] && it->second == agentsY[j]) {
+					empty = 0;
+					break;
+				}
+			}
+			if (empty == 1)  {
+				agentsX[i] = it->first;
+				agentsY[i] = it->second;
+				break;
+			}
+		}
 
-			break;
+		// check if next position is inside the destination radius
+		diffX = destX[i] - agentsX[i];
+		diffY = destY[i] - agentsY[i];
+		length = sqrt(diffX * diffX + diffY * diffY);
+
+		if (length < destR[i]) {
+			// take pop the current destination and append it to the end
+			Ped::Twaypoint* destination = waypoints[i].front();
+			waypoints[i].push_back(destination);
+			waypoints[i].pop_front();
+
+			// update the new destination
+			destination = waypoints[i].front();
+			destX[i] = (float)destination->getx();
+			destY[i] = (float)destination->gety();
+			destR[i] = (float)destination->getr();
 		}
 	}
 }

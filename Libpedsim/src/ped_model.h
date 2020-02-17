@@ -88,7 +88,7 @@ namespace Ped{
 		std::vector<Twaypoint*> destinations;
 
 		// Moves an agent towards its next position
-		void move(Ped::Tagent *agent);
+		void move();
 
 		////////////
 		/// Everything below here won't be relevant until Assignment 3
