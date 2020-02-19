@@ -8,24 +8,14 @@ namespace Ped {
 	public:
 		int isInside(float x, float y);
 
-		std::pair<int, int> getCenter();
+		std::pair<std::pair<int, int>, std::pair<int, int>> getBorder();
 
-		float getInnerRadius();
-
-		float getOuterRadius();
-
-		Region(std::pair<int, int> center, float innerRadius, float outerRadius);
+		Region(std::pair<int, int> upperLeft, std::pair<int, int> lowerRight);
 
 	private:
-		//std::pair<int, int> upperLeftBorderPoint;
+		std::pair<int, int> upperLeftBorderPoint;
 
-		//std::pair<int, int> lowerRightBorderPoint;
-
-		std::pair<int, int> center;
-
-		float innerRadius;
-
-		float outerRadius;
+		std::pair<int, int> lowerRightBorderPoint;
 	};
 }
 

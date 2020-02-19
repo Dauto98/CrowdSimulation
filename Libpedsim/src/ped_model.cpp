@@ -34,10 +34,6 @@
 
 static std::chrono::high_resolution_clock::time_point baseTime;
 
-float calcDistance(float x1, float y1, float x2, float y2) {
-	return sqrt((x2 - x1)*(x2 - x1) + (y2 - y1)*(y2 - y1));
-}
-
 void Ped::Model::setup(std::vector<Ped::Tagent*> agentsInScenario, std::vector<Twaypoint*> destinationsInScenario, IMPLEMENTATION implementation)
 {
 	// Convenience test: does CUDA work on this machine?
@@ -91,22 +87,24 @@ void Ped::Model::setup(std::vector<Ped::Tagent*> agentsInScenario, std::vector<T
 	for (int i = 0; i < 4; i++) {
 		regionAgentList.push_back(std::vector<int>());
 	}
-
-	regionList.push_back(Ped::Region(std::make_pair(0, 0), 0, 10));
-	regionList.push_back(Ped::Region(std::make_pair(0, 0), 10, 25));
-	regionList.push_back(Ped::Region(std::make_pair(0, 0), 25, 50));
-	regionList.push_back(Ped::Region(std::make_pair(0, 0), 50, 100));
+	regionList.push_back(Ped::Region(std::make_pair(0, 0), std::make_pair(80, 60)));
+	regionList.push_back(Ped::Region(std::make_pair(80, 0), std::make_pair(800, 60)));
+	regionList.push_back(Ped::Region(std::make_pair(0, 60), std::make_pair(80, 600)));
+	regionList.push_back(Ped::Region(std::make_pair(80, 60), std::make_pair(800, 600)));
 
 	// init agentsIsBeingProcessed and split agents into regions
 	agentsIsBeingProcessed = std::vector<std::atomic<double>>(agentsX.size());
 	for (int i = 0; i < agentsX.size(); i++) {
 		agentsIsBeingProcessed[i].store(ZERO_DURATION);
 
-		for (int j = 0; j < regionList.size(); j++) {
-			if (regionList[j].isInside(agentsX[i], agentsY[i])) {
-				regionAgentList[j].push_back(i);
-				break;
-			}
+		if (agentsX[i] < 400 && agentsY[i] < 300) {
+			regionAgentList[0].push_back(i);
+		} else if (agentsX[i] >= 400 && agentsY[i] < 300) {
+			regionAgentList[1].push_back(i);
+		} else if (agentsX[i] < 400 && agentsY[i] >= 300) {
+			regionAgentList[2].push_back(i);
+		} else if (agentsX[i] >= 400 && agentsY[i] >= 300) {
+			regionAgentList[3].push_back(i);
 		}
 	}
 
