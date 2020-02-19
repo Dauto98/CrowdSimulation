@@ -34,7 +34,7 @@
 
 static std::chrono::high_resolution_clock::time_point baseTime;
 
-void Ped::Model::setup(std::vector<Ped::Tagent*> agentsInScenario, std::vector<Twaypoint*> destinationsInScenario, IMPLEMENTATION implementation)
+void Ped::Model::setup(std::vector<Ped::Tagent*> agentsInScenario, std::vector<Twaypoint*> destinationsInScenario, IMPLEMENTATION implementation, IMPLEMENTATION moveImp)
 {
 	// Convenience test: does CUDA work on this machine?
 	cuda_test();
@@ -113,6 +113,7 @@ void Ped::Model::setup(std::vector<Ped::Tagent*> agentsInScenario, std::vector<T
 
 	// Sets the chosen implementation. Standard in the given code is SEQ
 	this->implementation = implementation;
+	this->moveImp = moveImp;
 
 	// Set up heatmap (relevant for Assignment 4)
 	setupHeatmapSeq();
@@ -125,28 +126,11 @@ void Ped::Model::computeNextPosition(int start, int end) {
 			continue;
 		}
 
-		// check if next position is inside the destination radius
+		// compute and update next position		
 		double diffX = destX[i] - agentsX[i];
 		double diffY = destY[i] - agentsY[i];
 		double length = sqrt(diffX * diffX + diffY * diffY);
 
-		if (length < destR[i]) {
-			// take pop the current destination and append it to the end
-			Ped::Twaypoint* destination = waypoints[i].front();
-			waypoints[i].push_back(destination);
-			waypoints[i].pop_front();
-
-			// update the new destination
-			destination = waypoints[i].front();
-			destX[i] = (float)destination->getx();
-			destY[i] = (float)destination->gety();
-			destR[i] = (float)destination->getr();
-		}
-
-		// compute and update next position		
-		diffX = destX[i] - agentsX[i];
-		diffY = destY[i] - agentsY[i];
-		length = sqrt(diffX * diffX + diffY * diffY);
 		desiredAgentsX[i] = (float)round(agentsX[i] + diffX / length);
 		desiredAgentsY[i] = (float)round(agentsY[i] + diffY / length);
 	}
@@ -191,28 +175,11 @@ void Ped::Model::tick() {
 				continue;
 			}
 
-			// check if next position is inside the destination radius
+			// compute and update next position		
 			double diffX = destX[i] - agentsX[i];
 			double diffY = destY[i] - agentsY[i];
 			double length = sqrt(diffX * diffX + diffY * diffY);
 
-			if (length < destR[i]) {
-				// take pop the current destination and append it to the end
-				Ped::Twaypoint* destination = waypoints[i].front();
-				waypoints[i].push_back(destination);
-				waypoints[i].pop_front();
-
-				// update the new destination
-				destination = waypoints[i].front();
-				destX[i] = (float)destination->getx();
-				destY[i] = (float)destination->gety();
-				destR[i] = (float)destination->getr();
-			}
-
-			// compute and update next position		
-			diffX = destX[i] - agentsX[i];
-			diffY = destY[i] - agentsY[i];
-			length = sqrt(diffX * diffX + diffY * diffY);
 			desiredAgentsX[i] = (float)round(agentsX[i] + diffX / length);
 			desiredAgentsY[i] = (float)round(agentsY[i] + diffY / length);
 		}
@@ -231,63 +198,6 @@ void Ped::Model::tick() {
 
 			// if destX, Y, R = -1 -> no destination -> set mask bit to zero, otherwise all 1
 			__m128 noDestMask = _mm_cmpge_ps(vDestX, _mm_setzero_ps());
-
-			// check if next position is near the destination radius
-			vDiffX = _mm_sub_ps(vDestX, vAgentsX);
-			vDiffY = _mm_sub_ps(vDestY, vAgentsY);
-			vLength = _mm_sqrt_ps(_mm_add_ps(_mm_mul_ps(vDiffX, vDiffX), _mm_mul_ps(vDiffY, vDiffY)));
-
-			__m128 bitMask = _mm_cmplt_ps(vLength, vDestR);
-			int mask = _mm_movemask_ps(bitMask);
-
-			if (mask & 1) {
-				// take pop the current destination and append it to the end
-				Ped::Twaypoint* destination = waypoints[i].front();
-				waypoints[i].push_back(destination);
-				waypoints[i].pop_front();
-
-				// update the new destination
-				destination = waypoints[i].front();
-				destX[i] = (float)destination->getx();
-				destY[i] = (float)destination->gety();
-				destR[i] = (float)destination->getr();
-			}
-			if (mask & 2) {
-				// take pop the current destination and append it to the end
-				Ped::Twaypoint* destination = waypoints[i + 1].front();
-				waypoints[i + 1].push_back(destination);
-				waypoints[i + 1].pop_front();
-
-				// update the new destination
-				destination = waypoints[i + 1].front();
-				destX[i + 1] = (float)destination->getx();
-				destY[i + 1] = (float)destination->gety();
-				destR[i + 1] = (float)destination->getr();
-			}
-			if (mask & 4) {
-				// take pop the current destination and append it to the end
-				Ped::Twaypoint* destination = waypoints[i + 2].front();
-				waypoints[i + 2].push_back(destination);
-				waypoints[i + 2].pop_front();
-
-				// update the new destination
-				destination = waypoints[i + 2].front();
-				destX[i + 2] = (float)destination->getx();
-				destY[i + 2] = (float)destination->gety();
-				destR[i + 2] = (float)destination->getr();
-			}
-			if (mask & 8) {
-				// take pop the current destination and append it to the end
-				Ped::Twaypoint* destination = waypoints[i + 3].front();
-				waypoints[i + 3].push_back(destination);
-				waypoints[i + 3].pop_front();
-
-				// update the new destination
-				destination = waypoints[i + 3].front();
-				destX[i + 3] = (float)destination->getx();
-				destY[i + 3] = (float)destination->gety();
-				destR[i + 3] = (float)destination->getr();
-			}
 			
 			// calculate distance
 			vDiffX = _mm_sub_ps(vDestX, vAgentsX);
@@ -301,25 +211,12 @@ void Ped::Model::tick() {
 			_mm_store_ps(&desiredAgentsY[i], vAgentsY);
 		}
 
-		move();
-	} else if (implementation == CUDA) {
-		for (int i = 0; i < agentsX.size(); i++) {
-			if (reached[i] == 1) {
-				// take pop the current destination and append it to the end
-				Ped::Twaypoint* destination = waypoints[i].front();
-				waypoints[i].push_back(destination);
-				waypoints[i].pop_front();
-
-				// update the new destination
-				destination = waypoints[i].front();
-				destX[i] = (float)destination->getx();
-				destY[i] = (float)destination->gety();
-				destR[i] = (float)destination->getr();
-
-				reached[i] = 0;
-			}
+		if (moveImp == SEQ) {
+			moveSeq();
+		} else {
+			move();
 		}
-
+	} else if (implementation == CUDA) {
 		cudaComputePosition(&agentsX[0], &agentsY[0], &desiredAgentsX[0], &desiredAgentsY[0], &destX[0], &destY[0], &destR[0], agentsX.size(), reached);
 
 		move();
@@ -354,6 +251,86 @@ float getSplitRadius(std::vector<int>& agentList, std::vector<float>& agentsX, s
 	std::sort(distances.begin(), distances.end());
 
 	return distances[(int)(distances.size() / 2)];
+}
+
+void Ped::Model::moveSeq() {
+	for (int i = 0; i < agentsX.size(); i++) {
+		// if there is no destination to go to
+		if (destX[i] == -1 || destY[i] == -1) {
+			continue;
+		}
+
+		// compute and update next position
+		double diffX = destX[i] - agentsX[i];
+		double diffY = destY[i] - agentsY[i];
+		double length = sqrt(diffX * diffX + diffY * diffY);
+
+		std::vector<std::pair<float, float> > prioritizedAlternatives;
+		std::pair<float, float> pDesired((float)round(agentsX[i] + diffX / length), (float)round(agentsY[i] + diffY / length));
+		prioritizedAlternatives.push_back(pDesired);
+
+		std::pair<float, float> p1, p2;
+		if (pDesired.first == agentsX[i] || pDesired.second == agentsY[i]) {
+			// Agent wants to walk straight to North, South, West or East
+			p1 = std::make_pair((float)round(pDesired.first + diffY / length), (float)round(pDesired.second + diffX / length));
+			p2 = std::make_pair((float)round(pDesired.first - diffY / length), (float)round(pDesired.second - diffX / length));
+
+			prioritizedAlternatives.push_back(p1);
+			prioritizedAlternatives.push_back(p2);
+			prioritizedAlternatives.push_back(std::make_pair((float)round(agentsX[i] + diffY / length), (float)round(agentsY[i] + diffX / length)));
+			prioritizedAlternatives.push_back(std::make_pair((float)round(agentsX[i] - diffY / length), (float)round(agentsY[i] - diffX / length)));
+			prioritizedAlternatives.push_back(std::make_pair((float)round(agentsX[i] + (diffY - diffX) / length), (float)round(agentsY[i] + (diffX - diffY) / length)));
+			prioritizedAlternatives.push_back(std::make_pair((float)round(agentsX[i] - (diffY - diffX) / length), (float)round(agentsY[i] - (diffX - diffY) / length)));
+			prioritizedAlternatives.push_back(std::make_pair((float)round(agentsX[i] - diffX / length), (float)round(agentsY[i] - diffY / length)));
+		}
+		else {
+			// Agent wants to walk diagonally
+			p1 = std::make_pair(pDesired.first, agentsY[i]);
+			p2 = std::make_pair(agentsX[i], pDesired.second);
+
+			prioritizedAlternatives.push_back(p1);
+			prioritizedAlternatives.push_back(p2);
+			prioritizedAlternatives.push_back(std::make_pair(pDesired.first, (float)round(agentsY[i] - diffY / length)));
+			prioritizedAlternatives.push_back(std::make_pair((float)round(agentsX[i] - diffX / length), pDesired.second));
+			prioritizedAlternatives.push_back(std::make_pair((float)round(agentsX[i] - diffX / length), agentsY[i]));
+			prioritizedAlternatives.push_back(std::make_pair(agentsX[i], (float)round(agentsY[i] - diffY / length)));
+			prioritizedAlternatives.push_back(std::make_pair((float)round(agentsX[i] - diffX / length), (float)round(agentsY[i] - diffY / length)));
+		}
+
+		// Find the first empty alternative position
+		for (std::vector<pair<float, float> >::iterator it = prioritizedAlternatives.begin(); it != prioritizedAlternatives.end(); ++it) {
+			int empty = 1;
+			for (int j = 0; j < agentsX.size(); j++) {
+				if (i != j && it->first == agentsX[j] && it->second == agentsY[j]) {
+					empty = 0;
+					break;
+				}
+			}
+			if (empty == 1) {
+				agentsX[i] = it->first;
+				agentsY[i] = it->second;
+				break;
+			}
+		}
+
+		// check if next position is inside the destination radius
+		diffX = destX[i] - agentsX[i];
+		diffY = destY[i] - agentsY[i];
+		length = sqrt(diffX * diffX + diffY * diffY);
+
+		if (length < destR[i]) {
+			// take pop the current destination and append it to the end
+			Ped::Twaypoint* destination = waypoints[i].front();
+			waypoints[i].push_back(destination);
+			waypoints[i].pop_front();
+
+			// update the new destination
+			destination = waypoints[i].front();
+			destX[i] = (float)destination->getx();
+			destY[i] = (float)destination->gety();
+			destR[i] = (float)destination->getr();
+		}
+	}
 }
 
 // Moves the agent to the next desired position. If already taken, it will
@@ -522,6 +499,25 @@ void Ped::Model::setPositionNoCollision(std::vector<std::pair<float, float> > pr
 		if (empty == 1) {
 			agentsX[i] = it->first;
 			agentsY[i] = it->second;
+		
+			// check if next position is inside the destination radius
+			float diffX = destX[i] - agentsX[i];
+			float diffY = destY[i] - agentsY[i];
+			float length = sqrt(diffX * diffX + diffY * diffY);
+
+			if (length < destR[i]) {
+				// take pop the current destination and append it to the end
+				Ped::Twaypoint* destination = waypoints[i].front();
+				waypoints[i].push_back(destination);
+				waypoints[i].pop_front();
+
+				// update the new destination
+				destination = waypoints[i].front();
+				destX[i] = (float)destination->getx();
+				destY[i] = (float)destination->gety();
+				destR[i] = (float)destination->getr();
+			}
+
 			break;
 		}
 	}

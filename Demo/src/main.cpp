@@ -77,7 +77,7 @@ int main(int argc, char*argv[]) {
 		// Reading the scenario file and setting up the crowd simulation model
 		Ped::Model model;
 		ParseScenario parser(scenefile);
-		model.setup(parser.getAgents(), parser.getWaypoints(), Ped::CUDA);
+		model.setup(parser.getAgents(), parser.getWaypoints(), Ped::VECTOR, Ped::OMP);
 
 		// GUI related set ups
 		QApplication app(argc, argv);
@@ -99,7 +99,7 @@ int main(int argc, char*argv[]) {
 			{
 				Ped::Model model;
 				ParseScenario parser(scenefile);
-				model.setup(parser.getAgents(), parser.getWaypoints(), Ped::OMP);
+				model.setup(parser.getAgents(), parser.getWaypoints(), Ped::VECTOR, Ped::SEQ);
 				PedSimulation simulation(model, mainwindow);
 				// Simulation mode to use when profiling (without any GUI)
 				std::cout << "Running reference version...\n";
@@ -116,7 +116,7 @@ int main(int argc, char*argv[]) {
 			{
 				Ped::Model model;
 				ParseScenario parser(scenefile);
-				model.setup(parser.getAgents(), parser.getWaypoints(), implementation_to_test);
+				model.setup(parser.getAgents(), parser.getWaypoints(), implementation_to_test, Ped::OMP);
 				PedSimulation simulation(model, mainwindow);
 				// Simulation mode to use when profiling (without any GUI)
 				std::cout << "Running target version...\n";

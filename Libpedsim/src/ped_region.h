@@ -17,10 +17,6 @@ namespace Ped {
 		Region(std::pair<int, int> center, float innerRadius, float outerRadius);
 
 	private:
-		//std::pair<int, int> upperLeftBorderPoint;
-
-		//std::pair<int, int> lowerRightBorderPoint;
-
 		std::pair<int, int> center;
 
 		float innerRadius;

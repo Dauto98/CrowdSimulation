@@ -33,7 +33,7 @@ namespace Ped{
 	public:
 
 		// Sets everything up
-		void setup(std::vector<Tagent*> agentsInScenario, std::vector<Twaypoint*> destinationsInScenario,IMPLEMENTATION implementation);
+		void setup(std::vector<Tagent*> agentsInScenario, std::vector<Twaypoint*> destinationsInScenario,IMPLEMENTATION implementation, IMPLEMENTATION moveImp);
 		
 		// Coordinates a time step in the scenario: move all agents by one step (if applicable).
 		void tick();
@@ -72,6 +72,8 @@ namespace Ped{
 		// agents (Assignment 1)
 		IMPLEMENTATION implementation;
 
+		IMPLEMENTATION moveImp;
+
 		// The agents in this scenario
 		std::vector<Tagent*> agents;
 		
@@ -107,6 +109,7 @@ namespace Ped{
 		std::vector<Twaypoint*> destinations;
 
 		// Moves an agent towards its next position
+		void moveSeq();
 		void move();
 
 		////////////
