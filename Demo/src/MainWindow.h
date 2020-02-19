@@ -22,6 +22,8 @@ public:
 
 	static int cellToPixel(int val);
 	static const int cellsizePixel = 5;
+	static const int width = 800;
+	static const int height = 600;
 	~MainWindow();
 private:
 	QGraphicsView *graphicsView;

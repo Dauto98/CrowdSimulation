@@ -141,7 +141,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='timing-release|x64'">
     <ClCompile>
       <AdditionalIncludeDirectories>.;.;..\Libpedsim\src;C:\Qt\5.12.0\msvc2017_64\include;C:\Qt\5.12.0\msvc2017_64\include\QtOpenGL;C:\Qt\5.12.0\msvc2017_64\include\QtWidgets;C:\Qt\5.12.0\msvc2017_64\include\QtGui;C:\Qt\5.12.0\5.12.0\msvc2017_64\include\QtANGLE;C:\Qt\5.12.0\msvc2017_64\include\QtCore;C:\Qt\5.12.0\msvc2017_64\mkspecs\win32-msvc;release;C:\Qt\5.12.0\msvc2017_64\mkspecs\win32-msvc2013;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <AdditionalOptions>-Zc:strictStrings -w34100 -w34189 -w44996 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>-Zc:strictStrings -w34100 -w34189 -w44996 -v %(AdditionalOptions)</AdditionalOptions>
       <AssemblerListingLocation>release\</AssemblerListingLocation>
       <BrowseInformation>false</BrowseInformation>
       <DebugInformationFormat>None</DebugInformationFormat>
@@ -161,7 +161,7 @@
     <Link>
       <AdditionalDependencies>libpedsim.lib;;C:\Progra~1\NVIDIA~2\CUDA\v9.2\lib\x64\cudart.lib;C:\Qt\5.12.0\msvc2017_64\lib\Qt5OpenGL.lib;C:\Qt\5.12.0\msvc2017_64\lib\Qt5Widgets.lib;C:\Qt\5.12.0\msvc2017_64\lib\Qt5Gui.lib;C:\Qt\5.12.0\msvc2017_64\lib\Qt5Core.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\$(Platform)\$(Configuration);C:\Progra~1\NVIDIA~2\CUDA\v9.2\lib\x64;C:\Qt\5.12.0\msvc2017_64\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalOptions>"/MANIFESTDEPENDENCY:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' publicKeyToken='6595b64144ccf1df' language='*' processorArchitecture='*'" %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>"/MANIFESTDEPENDENCY:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' publicKeyToken='6595b64144ccf1df' language='*' processorArchitecture='*'"  -verbose %(AdditionalOptions)</AdditionalOptions>
       <DataExecutionPrevention>true</DataExecutionPrevention>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <IgnoreImportLibrary>true</IgnoreImportLibrary>
@@ -275,7 +275,9 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <Xml Include="scenario.xml" />
+    <Xml Include="scenario.xml">
+      <SubType>Designer</SubType>
+    </Xml>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

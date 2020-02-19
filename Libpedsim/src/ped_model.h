@@ -14,8 +14,12 @@
 #include <vector>
 #include <map>
 #include <set>
+#include <ppl.h>
+#include <atomic>
+#include <chrono>
 
 #include "ped_agent.h"
+#include "ped_region.h"
 
 namespace Ped{
 	class Tagent;
@@ -46,6 +50,10 @@ namespace Ped{
 		// Return the agents' Y coordinate vector reference
 		const std::vector<float>& getAgentsY() const { return agentsY; }
 
+		void setPositionNoCollision(std::vector<std::pair<float, float> > prioritizedAlternatives, int i, int j);
+
+		std::vector<std::pair<float, float>> computeAlternative(int i);
+
 		// Adds an agent to the tree structure
 		void placeAgent(const Ped::Tagent *a);
 
@@ -72,6 +80,11 @@ namespace Ped{
 
 		std::vector<float> agentsY;
 
+		// desired position array
+		std::vector<float> desiredAgentsX;
+
+		std::vector<float> desiredAgentsY;
+
 		// store the waypoints for each agent into a 2D vector
 		std::vector<std::deque<Twaypoint*>> waypoints;
 
@@ -83,6 +96,12 @@ namespace Ped{
 		std::vector<float> destR;
 
 		int* reached;
+
+		std::vector<std::vector<int>> regionAgentList;
+
+		std::vector<Ped::Region> regionList;
+
+		std::vector<std::atomic<double>> agentsIsBeingProcessed;
 
 		// The waypoints in this scenario
 		std::vector<Twaypoint*> destinations;

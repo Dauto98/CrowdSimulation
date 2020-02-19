@@ -218,6 +218,7 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;WIN64;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <OpenMPSupport>true</OpenMPSupport>
+      <AdditionalOptions>-v %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -243,6 +244,7 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     <ClCompile Include="src\heatmap_seq.cpp" />
     <ClCompile Include="src\ped_agent.cpp" />
     <ClCompile Include="src\ped_model.cpp" />
+    <ClCompile Include="src\ped_region.cpp" />
     <ClCompile Include="src\ped_vector.cpp" />
     <ClCompile Include="src\ped_waypoint.cpp" />
   </ItemGroup>
@@ -251,6 +253,7 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     <ClInclude Include="src\cuda_testkernel.h" />
     <ClInclude Include="src\ped_agent.h" />
     <ClInclude Include="src\ped_model.h" />
+    <ClInclude Include="src\ped_region.h" />
     <ClInclude Include="src\ped_vector.h" />
     <ClInclude Include="src\ped_waypoint.h" />
   </ItemGroup>

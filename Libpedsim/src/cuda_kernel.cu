@@ -39,16 +39,14 @@ void cudaSetup(int n, float agentsX[], float agentsY[], float destX[], float des
 	cudaMalloc((void **)&d_destY, sizeof(float) * n);
 	cudaMalloc((void **)&d_destR, sizeof(float) * n);
 	cudaMalloc((void **)&d_reached, sizeof(int) * n);
-
-	
-	cudaMemcpy((void *)d_agentsX, (void*)agentsX, sizeof(float) * n, cudaMemcpyHostToDevice);
-	cudaMemcpy((void *)d_agentsY, (void*)agentsY, sizeof(float) * n, cudaMemcpyHostToDevice);
 }
 
-void cudaComputePosition(float agentsX[], float agentsY[], float destX[], float destY[], float destR[], int n, int reached[]) {
+void cudaComputePosition(float agentsX[], float agentsY[], float desiredAgentsX[], float desiredAgentsY[], float destX[], float destY[], float destR[], int n, int reached[]) {
 	int blockSize = 1024;
 	int numBlocks = (n + blockSize - 1) / blockSize;
 
+	cudaMemcpy((void *)d_agentsX, (void*)agentsX, sizeof(float) * n, cudaMemcpyHostToDevice);
+	cudaMemcpy((void *)d_agentsY, (void*)agentsY, sizeof(float) * n, cudaMemcpyHostToDevice);
 	cudaMemcpy((void *)d_destX, (void*)destX, sizeof(float) * n, cudaMemcpyHostToDevice);
 	cudaMemcpy((void *)d_destY, (void*)destY, sizeof(float) * n, cudaMemcpyHostToDevice);
 	cudaMemcpy((void *)d_destR, (void*)destR, sizeof(float) * n, cudaMemcpyHostToDevice);
@@ -56,7 +54,7 @@ void cudaComputePosition(float agentsX[], float agentsY[], float destX[], float 
 
 	computePositionParallel<<<numBlocks, blockSize>>>(d_agentsX, d_agentsY, d_destX, d_destY, d_destR, n, d_reached);
 
-	cudaMemcpy((void *)agentsX, (void*)d_agentsX, sizeof(float) * n, cudaMemcpyDeviceToHost);
-	cudaMemcpy((void *)agentsY, (void*)d_agentsY, sizeof(float) * n, cudaMemcpyDeviceToHost);
+	cudaMemcpy((void *)desiredAgentsX, (void*)d_agentsX, sizeof(float) * n, cudaMemcpyDeviceToHost);
+	cudaMemcpy((void *)desiredAgentsY, (void*)d_agentsY, sizeof(float) * n, cudaMemcpyDeviceToHost);
 	cudaMemcpy((void *)reached, (void*)d_reached, sizeof(int) * n, cudaMemcpyDeviceToHost);
 }

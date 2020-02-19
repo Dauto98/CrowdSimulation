@@ -32,6 +32,7 @@
     <ClCompile Include="src\ped_vector.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\ped_region.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\cuda_testkernel.h">
@@ -52,5 +53,6 @@
     <ClInclude Include="src\cuda_kernel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\ped_region.h" />
   </ItemGroup>
 </Project>
