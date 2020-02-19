@@ -34,10 +34,6 @@
 
 static std::chrono::high_resolution_clock::time_point baseTime;
 
-float calcDistance(float x1, float y1, float x2, float y2) {
-	return sqrt((x2 - x1)*(x2 - x1) + (y2 - y1)*(y2 - y1));
-}
-
 void Ped::Model::setup(std::vector<Ped::Tagent*> agentsInScenario, std::vector<Twaypoint*> destinationsInScenario, IMPLEMENTATION implementation)
 {
 	// Convenience test: does CUDA work on this machine?
@@ -92,10 +88,10 @@ void Ped::Model::setup(std::vector<Ped::Tagent*> agentsInScenario, std::vector<T
 		regionAgentList.push_back(std::vector<int>());
 	}
 
-	regionList.push_back(Ped::Region(std::make_pair(0, 0), 0, 10));
-	regionList.push_back(Ped::Region(std::make_pair(0, 0), 10, 25));
-	regionList.push_back(Ped::Region(std::make_pair(0, 0), 25, 50));
-	regionList.push_back(Ped::Region(std::make_pair(0, 0), 50, 100));
+	regionList.push_back(Ped::Region(std::make_pair(80, 60), 0, 10));
+	regionList.push_back(Ped::Region(std::make_pair(80, 60), 10, 25));
+	regionList.push_back(Ped::Region(std::make_pair(80, 60), 25, 50));
+	regionList.push_back(Ped::Region(std::make_pair(80, 60), 50, 100));
 
 	// init agentsIsBeingProcessed and split agents into regions
 	agentsIsBeingProcessed = std::vector<std::atomic<double>>(agentsX.size());
@@ -344,6 +340,22 @@ int getRegion(float x, float y, std::vector<Ped::Region> &regionList) {
 	return -1;
 }
 
+float calcDistance(float x1, float y1, float x2, float y2) {
+	return sqrt((x2 - x1)*(x2 - x1) + (y2 - y1)*(y2 - y1));
+}
+
+float getSplitRadius(std::vector<int>& agentList, std::vector<float>& agentsX, std::vector<float>& agentsY) {
+	std::vector<float> distances = std::vector<float>();
+
+	for (int i = 0; i < agentList.size(); i++) {
+		distances.push_back(calcDistance(agentsX[agentList[i]], agentsY[agentList[i]], 80, 60));
+	}
+
+	std::sort(distances.begin(), distances.end());
+
+	return distances[(int)(distances.size() / 2)];
+}
+
 // Moves the agent to the next desired position. If already taken, it will
 // be moved to a location close to it.
 void Ped::Model::move() {
@@ -376,20 +388,72 @@ void Ped::Model::move() {
 		}
 	}
 
-	// redivide the region
-	//int baseNumAgents = agentsX.size() / regionAgentList.size();
-	//std::vector<int> regionToMerge = std::vector<int>();
-	//std::vector<int> regionToSplit = std::vector<int>();
-	//for (int i = 0; i < regionAgentList.size(); i++) {
-	//	if (regionAgentList[i].size() < baseNumAgents * 0.5) {
-	//		regionToMerge.push_back(i);
-	//	}
-	//	if (regionAgentList[i].size() > baseNumAgents * 1.5) {
-	//		regionToSplit.push_back(i);
-	//	}
-	//}
+	// merge the regions
+	int baseNumAgents = agentsX.size() / 6;
+	for (int i = 0, size = regionList.size(); i < size; i++) {
+		if (regionAgentList[i].size() < baseNumAgents - 20) {
+			int regionToMergeWith;
+			if (i == 0) {
+				regionToMergeWith = 1;
+			} else if (i == regionList.size() - 1) {
+				regionToMergeWith = i - 1;
+			} else if (regionAgentList[i - 1].size() < regionAgentList[i + 1].size()) {
+				regionToMergeWith = i - 1;
+			} else {
+				regionToMergeWith = i + 1;
+			}
+			// merge region agent list
+			regionAgentList[i].insert(regionAgentList[i].end(), regionAgentList[regionToMergeWith].begin(), regionAgentList[regionToMergeWith].end());
+			regionAgentList.erase(regionAgentList.begin() + regionToMergeWith);
+			
+			// create new region and insert it to the regionList
+			float innerRadius = i < regionToMergeWith ? regionList[i].getInnerRadius() : regionList[regionToMergeWith].getInnerRadius();
+			float outerRadius = i < regionToMergeWith ? regionList[regionToMergeWith].getOuterRadius() : regionList[i].getOuterRadius();
+			Ped::Region newRegion = Ped::Region(std::make_pair(80, 60), innerRadius, outerRadius);
+			if (regionToMergeWith < i) {
+				regionList.insert(regionList.begin() + regionToMergeWith, newRegion);
+				regionList.erase(regionList.begin() + regionToMergeWith + 1);
+				regionList.erase(regionList.begin() + regionToMergeWith + 1);
+				i -= 2;
+			} else {
+				regionList.insert(regionList.begin() + i, newRegion);
+				regionList.erase(regionList.begin() + i + 1);
+				regionList.erase(regionList.begin() + i + 1);
+				i--;
+			}
+			size--;
+		}
+	}
 
-	//if (!regionToSplit.empty())
+	// split the regions
+	for (int i = 0, size = regionList.size(); i < size; i++) {
+		if (regionAgentList[i].size() > baseNumAgents + 20) {
+			float splitRadius = getSplitRadius(regionAgentList[i], agentsX, agentsY);
+			Ped::Region newRegion1 = Ped::Region(std::make_pair(80, 60), regionList[i].getInnerRadius(), splitRadius);
+			Ped::Region newRegion2 = Ped::Region(std::make_pair(80, 60), splitRadius, regionList[i].getOuterRadius());
+			std::vector<int> newAgentList1 = std::vector<int>();
+			std::vector<int> newAgentList2 = std::vector<int>();
+
+			for (int j = 0; j < regionAgentList[i].size(); j++) {
+				if (newRegion1.isInside(agentsX[regionAgentList[i][j]], agentsY[regionAgentList[i][j]]) == 1) {
+					newAgentList1.push_back(regionAgentList[i][j]);
+				} else {
+					newAgentList2.push_back(regionAgentList[i][j]);
+				}
+			}
+
+			regionList.insert(regionList.begin() + i, newRegion1);
+			regionList.insert(regionList.begin() + i + 1, newRegion2);
+			regionList.erase(regionList.begin() + i + 2);
+
+			regionAgentList.insert(regionAgentList.begin() + i, newAgentList1);
+			regionAgentList.insert(regionAgentList.begin() + i + 1, newAgentList2);
+			regionAgentList.erase(regionAgentList.begin() + i + 2);
+
+			size++;
+			i++;
+		}
+	}
 }
 
 std::vector<std::pair<float, float>> Ped::Model::computeAlternative(int i) {

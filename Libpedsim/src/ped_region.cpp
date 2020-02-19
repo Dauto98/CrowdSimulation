@@ -6,7 +6,7 @@ Ped::Region::Region(std::pair<int, int> center, float innerRadius, float outerRa
 
 int Ped::Region::isInside(float x, float y) {
 	float distance = sqrt((x - center.first)*(x - center.first) + (y - center.second)*(y - center.second));
-	if (distance > innerRadius && distance < outerRadius) {
+	if (distance >= innerRadius && distance < outerRadius) {
 		return 1;
 	}
 	return 0;
