@@ -367,44 +367,50 @@ void Ped::Model::move() {
 
 	// merge the regions
 	int baseNumAgents = agentsX.size() / 6;
-	for (int i = 0, size = regionList.size(); i < size; i++) {
-		if (regionAgentList[i].size() < baseNumAgents - 20) {
-			int regionToMergeWith;
-			if (i == 0) {
-				regionToMergeWith = 1;
-			} else if (i == regionList.size() - 1) {
-				regionToMergeWith = i - 1;
-			} else if (regionAgentList[i - 1].size() < regionAgentList[i + 1].size()) {
-				regionToMergeWith = i - 1;
-			} else {
-				regionToMergeWith = i + 1;
+	if (regionList.size() >= 4) {
+		for (int i = 0, size = regionList.size(); i < size; i++) {
+			if (regionAgentList[i].size() < fmax(baseNumAgents - 20, 0)) {
+				int regionToMergeWith;
+				if (i == 0) {
+					regionToMergeWith = 1;
+				}
+				else if (i == regionList.size() - 1) {
+					regionToMergeWith = i - 1;
+				}
+				else if (regionAgentList[i - 1].size() < regionAgentList[i + 1].size()) {
+					regionToMergeWith = i - 1;
+				}
+				else {
+					regionToMergeWith = i + 1;
+				}
+				// merge region agent list
+				regionAgentList[i].insert(regionAgentList[i].end(), regionAgentList[regionToMergeWith].begin(), regionAgentList[regionToMergeWith].end());
+				regionAgentList.erase(regionAgentList.begin() + regionToMergeWith);
+
+				// create new region and insert it to the regionList
+				float innerRadius = i < regionToMergeWith ? regionList[i].getInnerRadius() : regionList[regionToMergeWith].getInnerRadius();
+				float outerRadius = i < regionToMergeWith ? regionList[regionToMergeWith].getOuterRadius() : regionList[i].getOuterRadius();
+				Ped::Region newRegion = Ped::Region(std::make_pair(80, 60), innerRadius, outerRadius);
+				if (regionToMergeWith < i) {
+					regionList.insert(regionList.begin() + regionToMergeWith, newRegion);
+					regionList.erase(regionList.begin() + regionToMergeWith + 1);
+					regionList.erase(regionList.begin() + regionToMergeWith + 1);
+					i -= 2;
+				}
+				else {
+					regionList.insert(regionList.begin() + i, newRegion);
+					regionList.erase(regionList.begin() + i + 1);
+					regionList.erase(regionList.begin() + i + 1);
+					i--;
+				}
+				size--;
 			}
-			// merge region agent list
-			regionAgentList[i].insert(regionAgentList[i].end(), regionAgentList[regionToMergeWith].begin(), regionAgentList[regionToMergeWith].end());
-			regionAgentList.erase(regionAgentList.begin() + regionToMergeWith);
-			
-			// create new region and insert it to the regionList
-			float innerRadius = i < regionToMergeWith ? regionList[i].getInnerRadius() : regionList[regionToMergeWith].getInnerRadius();
-			float outerRadius = i < regionToMergeWith ? regionList[regionToMergeWith].getOuterRadius() : regionList[i].getOuterRadius();
-			Ped::Region newRegion = Ped::Region(std::make_pair(80, 60), innerRadius, outerRadius);
-			if (regionToMergeWith < i) {
-				regionList.insert(regionList.begin() + regionToMergeWith, newRegion);
-				regionList.erase(regionList.begin() + regionToMergeWith + 1);
-				regionList.erase(regionList.begin() + regionToMergeWith + 1);
-				i -= 2;
-			} else {
-				regionList.insert(regionList.begin() + i, newRegion);
-				regionList.erase(regionList.begin() + i + 1);
-				regionList.erase(regionList.begin() + i + 1);
-				i--;
-			}
-			size--;
 		}
 	}
 
 	// split the regions
 	for (int i = 0, size = regionList.size(); i < size; i++) {
-		if (regionAgentList[i].size() > baseNumAgents + 20) {
+		if (regionAgentList[i].size() > (baseNumAgents + 20)) {
 			float splitRadius = getSplitRadius(regionAgentList[i], agentsX, agentsY);
 			Ped::Region newRegion1 = Ped::Region(std::make_pair(80, 60), regionList[i].getInnerRadius(), splitRadius);
 			Ped::Region newRegion2 = Ped::Region(std::make_pair(80, 60), splitRadius, regionList[i].getOuterRadius());
