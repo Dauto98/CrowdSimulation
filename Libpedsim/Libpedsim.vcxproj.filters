@@ -15,6 +15,7 @@
     <CudaCompile Include="src\cuda_kernel.cu">
       <Filter>Source Files</Filter>
     </CudaCompile>
+    <CudaCompile Include="src\cuda_heatmap.cu" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\heatmap_seq.cpp">
@@ -54,5 +55,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\ped_region.h" />
+    <ClInclude Include="src\cuda_heatmap.h" />
   </ItemGroup>
 </Project>

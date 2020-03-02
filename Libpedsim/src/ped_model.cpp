@@ -19,6 +19,7 @@
 #include <omp.h>
 #include <thread>
 #include "cuda_kernel.h"
+#include "cuda_heatmap.h"
 #include <chrono>
 
 // Memory leak check with msvc++
@@ -116,7 +117,8 @@ void Ped::Model::setup(std::vector<Ped::Tagent*> agentsInScenario, std::vector<T
 	this->moveImp = moveImp;
 
 	// Set up heatmap (relevant for Assignment 4)
-	setupHeatmapSeq();
+	//setupHeatmapSeq();
+	cudaSetupHeatmap(agentsX.size(), cuda_blurred_heatmap);
 }
 
 void Ped::Model::computeNextPosition(int start, int end) {
@@ -211,11 +213,22 @@ void Ped::Model::tick() {
 			_mm_store_ps(&desiredAgentsY[i], vAgentsY);
 		}
 
+		float * desiredPositionX = &desiredAgentsX[0];
+		float * desiredPositionY = &desiredAgentsY[0];
+		int n = desiredAgentsX.size();
+		cudaUpdateHeatmap(desiredPositionX, desiredPositionY, n, cuda_blurred_heatmap);
+
 		if (moveImp == SEQ) {
 			moveSeq();
 		} else {
+			printf("start move\n");
 			move();
+			printf("finish move\n");
 		}
+
+		heatmapSynchronize();
+
+		printf("___________\n");
 	} else if (implementation == CUDA) {
 		cudaComputePosition(&agentsX[0], &agentsY[0], &desiredAgentsX[0], &desiredAgentsY[0], &destX[0], &destY[0], &destR[0], agentsX.size(), reached);
 

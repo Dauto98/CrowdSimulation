@@ -50,16 +50,6 @@ MainWindow::MainWindow(const Ped::Model &pedModel) : model(pedModel), agentsX(pe
 		rectList.push_back((scene->addRect(MainWindow::cellToPixel(agentsX[i]), MainWindow::cellToPixel(agentsY[i]), MainWindow::cellsizePixel - 1, MainWindow::cellsizePixel - 1, outlinePen, greenBrush)));
 	}
 
-	// Create viewAgents with references to the position of the model counterparts
-	//const std::vector<Ped::Tagent*> &agents = model.getAgents();
-
-	//std::vector<Ped::Tagent*>::const_iterator it;
-
-	//for (it = agents.begin(); it != agents.end(); it++)
-	//{
-	//	viewAgents.push_back(new ViewAgent(*it, scene));
-	//}
-
 	const int heatmapSize = model.getHeatmapSize();
 	QPixmap pixmapDummy = QPixmap(heatmapSize, heatmapSize);
 	pixmap = scene->addPixmap(pixmapDummy);
@@ -71,10 +61,9 @@ MainWindow::MainWindow(const Ped::Model &pedModel) : model(pedModel), agentsX(pe
 void MainWindow::paint() {
 
 	// Uncomment this to paint the heatmap (Assignment 4)
-	// const int heatmapSize = model.getHeatmapSize();
-	// QImage image((uchar*)*model.getHeatmap(), heatmapSize, heatmapSize, heatmapSize * sizeof(int), QImage::Format_ARGB32);
-	QImage image;
-	 pixmap->setPixmap(QPixmap::fromImage(image));
+	const int heatmapSize = model.getHeatmapSize();
+	QImage image((uchar*)model.cudaGetHeatmap(), heatmapSize, heatmapSize, heatmapSize * sizeof(int), QImage::Format_ARGB32);
+	pixmap->setPixmap(QPixmap::fromImage(image));
 
 	// Paint all agents: green, if the only agent on that position, otherwise red
 	std::set<std::tuple<float, float>> positionsTaken;
@@ -95,24 +84,6 @@ void MainWindow::paint() {
 		rectList[i]->setBrush(brush);
 		rectList[i]->setRect(MainWindow::cellToPixel(agentsX[i]), MainWindow::cellToPixel(agentsY[i]), MainWindow::cellsizePixel - 1, MainWindow::cellsizePixel - 1);
 	}
-	
-	//std::vector<ViewAgent*>::iterator it;
-	//for (it = viewAgents.begin(); it != viewAgents.end(); it++)
-	//{
-	//	size_t tupleSizeBeforeInsert = positionsTaken.size();
-	//	positionsTaken.insert((*it)->getPosition());
-	//	size_t tupleSizeAfterInsert = positionsTaken.size();
-
-	//	QColor color;
-	//	if (tupleSizeBeforeInsert != tupleSizeAfterInsert) {
-	//		color = Qt::green;
-	//	}
-	//	else {
-	//		color = Qt::red;
-	//	}
-
-	//	(*it)->paint(color);
-	//}
 }
 
 int MainWindow::cellToPixel(int val)
