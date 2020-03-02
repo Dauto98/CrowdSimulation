@@ -2,6 +2,8 @@
 //
 // Implements the heatmap functionality. 
 //
+#include <Windows.h>
+
 #include "ped_model.h"
 
 #include <cstdlib>
@@ -42,6 +44,14 @@ void Ped::Model::setupHeatmapSeq()
 // Updates the heatmap according to the agent positions
 void Ped::Model::updateHeatmapSeq()
 {
+	LARGE_INTEGER frequency;        // ticks per second
+	LARGE_INTEGER t1, t2;           // ticks
+	double elapsedTime;
+
+	// get ticks per second
+	QueryPerformanceFrequency(&frequency);
+
+	QueryPerformanceCounter(&t1);
 	for (int x = 0; x < SIZE; x++)
 	{
 		for (int y = 0; y < SIZE; y++)
@@ -74,7 +84,13 @@ void Ped::Model::updateHeatmapSeq()
 			heatmap[y][x] = heatmap[y][x] < 255 ? heatmap[y][x] : 255;
 		}
 	}
+	QueryPerformanceCounter(&t2);
 
+	// compute and print the elapsed time in millisec
+	elapsedTime = (t2.QuadPart - t1.QuadPart) * 1000.0 / frequency.QuadPart;
+	printf("finish generating heatmap in : %lf\n", elapsedTime);
+
+	QueryPerformanceCounter(&t1);
 	// Scale the data for visual representation
 	for (int y = 0; y < SIZE; y++)
 	{
@@ -90,6 +106,11 @@ void Ped::Model::updateHeatmapSeq()
 			}
 		}
 	}
+	QueryPerformanceCounter(&t2);
+
+	// compute and print the elapsed time in millisec
+	elapsedTime = (t2.QuadPart - t1.QuadPart) * 1000.0 / frequency.QuadPart;
+	printf("finish scaled heatmap in : %lf\n", elapsedTime);
 
 	// Weights for blur filter
 	const int w[5][5] = {
@@ -101,7 +122,8 @@ void Ped::Model::updateHeatmapSeq()
 	};
 
 #define WEIGHTSUM 273
-	// Apply gaussian blurfilter		       
+	// Apply gaussian blurfilter	
+	QueryPerformanceCounter(&t1);
 	for (int i = 2; i < SCALED_SIZE - 2; i++)
 	{
 		for (int j = 2; j < SCALED_SIZE - 2; j++)
@@ -118,6 +140,11 @@ void Ped::Model::updateHeatmapSeq()
 			blurred_heatmap[i][j] = 0x00FF0000 | value << 24;
 		}
 	}
+	QueryPerformanceCounter(&t2);
+
+	// compute and print the elapsed time in millisec
+	elapsedTime = (t2.QuadPart - t1.QuadPart) * 1000.0 / frequency.QuadPart;
+	printf("finish blur heatmap in : %lf\n", elapsedTime);
 }
 
 int Ped::Model::getHeatmapSize() const {

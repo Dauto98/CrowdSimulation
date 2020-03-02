@@ -118,7 +118,7 @@ void Ped::Model::setup(std::vector<Ped::Tagent*> agentsInScenario, std::vector<T
 
 	// Set up heatmap (relevant for Assignment 4)
 	//setupHeatmapSeq();
-	cudaSetupHeatmap(agentsX.size(), cuda_blurred_heatmap);
+	cudaSetupHeatmap(agentsX.size(), &cuda_blurred_heatmap);
 }
 
 void Ped::Model::computeNextPosition(int start, int end) {
@@ -213,6 +213,7 @@ void Ped::Model::tick() {
 			_mm_store_ps(&desiredAgentsY[i], vAgentsY);
 		}
 
+		//updateHeatmapSeq();
 		float * desiredPositionX = &desiredAgentsX[0];
 		float * desiredPositionY = &desiredAgentsY[0];
 		int n = desiredAgentsX.size();
@@ -221,9 +222,25 @@ void Ped::Model::tick() {
 		if (moveImp == SEQ) {
 			moveSeq();
 		} else {
+			LARGE_INTEGER frequency;        // ticks per second
+			LARGE_INTEGER t1, t2;           // ticks
+			double elapsedTime;
+
+			// get ticks per second
+			QueryPerformanceFrequency(&frequency);
+
 			printf("start move\n");
+			// start timer
+			QueryPerformanceCounter(&t1);
+
 			move();
-			printf("finish move\n");
+			
+			// stop timer
+			QueryPerformanceCounter(&t2);
+
+			// compute and print the elapsed time in millisec
+			elapsedTime = (t2.QuadPart - t1.QuadPart) * 1000.0 / frequency.QuadPart;
+			printf("finish move in : %lf\n", elapsedTime);
 		}
 
 		heatmapSynchronize();

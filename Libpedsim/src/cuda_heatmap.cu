@@ -26,27 +26,15 @@ inline void cudaCheckErrorAssert(cudaError_t code, const char *file, int line, b
 		fprintf(stderr, "GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
 		if (abort) exit(code);
 	}
-}
-
-// Get the BLOCK_SIZExBLOCK_SIZE sub-matrix Asub of A that is
-// located col sub-matrices to the right and row sub-matrices down
-// from the upper-left corner of A
-__device__ int* GetSubMatrix(int* A, size_t A_pitch, int row, int col)
-{
-	return  &A[A_pitch * BLOCK_SIZE * row + BLOCK_SIZE * col];
 }
 cudaStream_t stream;
 
-void cudaSetupHeatmap(int n, int* &cuda_blurred_heatmap) {
+void cudaSetupHeatmap(int n, int** cuda_blurred_heatmap) {
 	cudaCheckError(cudaMallocPitch(&heatmap, &heatmap_pitch, SIZE * sizeof(int), SIZE));
 
 	cudaCheckError(cudaMallocPitch(&scaled_heatmap, &scaled_heatmap_pitch, SCALED_SIZE * sizeof(int), SCALED_SIZE));
 
-	cuda_blurred_heatmap = (int*)malloc(SCALED_SIZE * SCALED_SIZE * sizeof(int));
-	if (cuda_blurred_heatmap == NULL) {
-		fprintf(stderr, "Initialize heatmap: Failed to malloc cuda_blurred_heatmap\n");
-		exit(1);
-	}
+	cudaCheckError(cudaMallocHost(cuda_blurred_heatmap, SCALED_SIZE * SCALED_SIZE * sizeof(int)));
 
 	cudaCheckError(cudaMemset2D(heatmap, heatmap_pitch, 0, SIZE * sizeof(int), SIZE));
 
@@ -103,9 +91,23 @@ __global__ void computeHeatmap(float* desiredAgentsX, float* desiredAgentsY, int
 			}
 		}
 	}
+}
+
+__global__ void computeScaledHeatmap(int* heatmap, size_t heatmap_pitch, int* scaled_heatmap, size_t scaled_heatmap_pitch) {
+	// Block row and column
+	int blockRow = blockIdx.y;
+	int blockCol = blockIdx.x;
+
+	// Thread row and column block
+	int row = threadIdx.y;
+	int col = threadIdx.x;
+
+	// x, y coordinate
+	int x = blockCol * blockDim.x + col;
+	int y = blockRow * blockDim.y + row;
 
 	// Scale the data for visual representation
-	int value = *heatPoint;
+	int value = *((int*)((char*)heatmap + y * heatmap_pitch) + x);
 	for (int r = 0; r < CELLSIZE; r++) {
 		int* row = (int*)((char*)scaled_heatmap + (r + y * CELLSIZE) * scaled_heatmap_pitch);
 		for (int c = 0; c < CELLSIZE; c++) {
@@ -203,29 +205,80 @@ __global__ void blurfilterHeatmap(int* blurred_heatmap, size_t blurred_heatmap_p
 }
 
 void CUDART_CB MyCallback(cudaStream_t stream, cudaError_t status, void *data) {
-	printf("finish stream %d\n", (size_t)data);
+	printf("%s", (char*)data);
 }
 
 void cudaUpdateHeatmap(float * desiredPositionX, float * desiredPositionY, int n, int* cuda_blurred_heatmap) {
+	cudaEvent_t start, stop;
+	cudaCheckError(cudaEventCreate(&start));
+	cudaCheckError(cudaEventCreate(&stop));	float elapsedTime = 0.0;
+
 	printf("start heatmap\n");
 
+	/**
+	* Copy desired position from host to device
+	*/
+	//cudaCheckError(cudaEventRecord(start, stream));
 	cudaCheckError(cudaMemcpyAsync(d_desiredPositionX, desiredPositionX, n * sizeof(float), cudaMemcpyHostToDevice, stream));
 	cudaCheckError(cudaMemcpyAsync(d_desiredPositionY, desiredPositionY, n * sizeof(float), cudaMemcpyHostToDevice, stream));
+	cudaCheckError(cudaStreamAddCallback(stream, MyCallback, "Finish copy host to device\n", 0));
+	//cudaCheckError(cudaEventRecord(stop, stream));
+	//cudaCheckError(cudaEventSynchronize(stop));
+	//cudaCheckError(cudaEventElapsedTime(&elapsedTime, start, stop));
 
+	//printf("Time for memcpy host to device: %f\n", elapsedTime);
+
+	/**
+	* generate heatmap in kernel
+	*/
 	dim3 dimBlock(BLOCK_SIZE, BLOCK_SIZE);
 	dim3 dimGrid(SIZE / BLOCK_SIZE, SIZE / BLOCK_SIZE);
+	//cudaCheckError(cudaEventRecord(start, stream));
 	computeHeatmap<<<dimGrid, dimBlock, n * 2 * sizeof(float), stream>>>(d_desiredPositionX, d_desiredPositionY, n, heatmap, heatmap_pitch, scaled_heatmap, scaled_heatmap_pitch);
+	cudaCheckError(cudaStreamAddCallback(stream, MyCallback, "Finish generating heatmap\n", 0));
+	//cudaCheckError(cudaEventRecord(stop, stream));
+	//cudaCheckError(cudaEventSynchronize(stop));
+	//cudaCheckError(cudaEventElapsedTime(&elapsedTime, start, stop));
+	//printf("Time for compute heatmap: %f\n", elapsedTime);
 	//cudaCheckError(cudaPeekAtLastError());
 	//cudaCheckError(cudaDeviceSynchronize());
 
+	/**
+	* generate scaled heatmap in kernel
+	*/
+	//cudaCheckError(cudaEventRecord(start, stream));
+	computeScaledHeatmap<<<dimGrid, dimBlock, 0, stream>>>(heatmap, heatmap_pitch, scaled_heatmap, scaled_heatmap_pitch);
+	cudaCheckError(cudaStreamAddCallback(stream, MyCallback, "Finish scaling heatmap\n", 0));
+	//cudaCheckError(cudaEventRecord(stop, stream));
+	//cudaCheckError(cudaEventSynchronize(stop));
+	//cudaCheckError(cudaEventElapsedTime(&elapsedTime, start, stop));
+	//printf("Time for compute scaled heatmap: %f\n", elapsedTime);
+
+	/**
+	* Blur the scaled heatmap in kernel
+	*/
 	dim3 dimGrid2(SCALED_SIZE / BLOCK_SIZE, SCALED_SIZE / BLOCK_SIZE);
+	//cudaCheckError(cudaEventRecord(start, stream));
 	blurfilterHeatmap<<<dimGrid2, dimBlock, 0, stream>>>(blurred_heatmap, blurred_heatmap_pitch, scaled_heatmap, scaled_heatmap_pitch);
+	cudaCheckError(cudaStreamAddCallback(stream, MyCallback, "Finish blurring heatmap\n", 0));
+	//cudaCheckError(cudaEventRecord(stop, stream));
+	//cudaCheckError(cudaEventSynchronize(stop));
+	//cudaCheckError(cudaEventElapsedTime(&elapsedTime, start, stop));
+	//printf("Time for blur heatmap: %f\n", elapsedTime);
 	//cudaCheckError(cudaPeekAtLastError());
 	//cudaCheckError(cudaDeviceSynchronize());
 
+	/**
+	* Copy blurred heatmap from device to host
+	*/
+	//cudaCheckError(cudaEventRecord(start, stream));
 	cudaCheckError(cudaMemcpy2DAsync(cuda_blurred_heatmap, SCALED_SIZE * sizeof(int), blurred_heatmap, blurred_heatmap_pitch, SCALED_SIZE * sizeof(int), SCALED_SIZE, cudaMemcpyDeviceToHost, stream));
-	
-	cudaCheckError(cudaStreamAddCallback(stream, MyCallback, 0, 0));
+	//cudaCheckError(cudaEventRecord(stop, stream));
+	//cudaCheckError(cudaEventSynchronize(stop));
+	//cudaCheckError(cudaEventElapsedTime(&elapsedTime, start, stop));
+	//printf("Time for memcpy device to host: %f\n", elapsedTime);
+
+	cudaCheckError(cudaStreamAddCallback(stream, MyCallback, "Finish stream operation\n", 0));
 	printf("Finish Async call\n");
 }
 

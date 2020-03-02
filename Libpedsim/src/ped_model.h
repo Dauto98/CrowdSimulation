@@ -62,7 +62,7 @@ namespace Ped{
 		~Model();
 
 		// Returns the heatmap visualizing the density of agents
-		//int const * const * getHeatmap() const { return blurred_heatmap; };
+		int const * const * getHeatmap() const { return blurred_heatmap; };
 		int getHeatmapSize() const;
 
 		int const * cudaGetHeatmap() const { return cuda_blurred_heatmap; };
@@ -142,7 +142,6 @@ namespace Ped{
 
 		void setupHeatmapSeq();
 		void updateHeatmapSeq();
-
 
 		/**
 		*  CUDA heatmap variable
